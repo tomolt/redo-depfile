@@ -18,12 +18,17 @@
  * SPDX-License-Identifier: ISC
  */
 
+#define _POSIX_C_SOURCE 200809L
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
 #include <errno.h>
 #include <assert.h>
+
+#define IFCHANGE_CMD "redo-ifchange"
+//#define IFCHANGE_CMD "echo"
 
 /* 
  * early on we remap syntactically relevant characters in the input file
@@ -32,6 +37,9 @@
 #define SYN_WS  0x1F /* ascii unit separator */
 #define SYN_EQ  0x1E /* ascii record separator */
 #define SYN_COL 0x1D /* ascii group separator */
+#define SYN_SC  0x1C /* ascii file separator */
+
+#define IS_CTRL(c) ((c)<0x20)
 
 static char **deps;
 static size_t ndeps;
@@ -68,6 +76,17 @@ reallocarray(void *ptr, size_t m, size_t n)
 		return 0;
 	}
 	return realloc(ptr, n * m);
+}
+
+/*
+ * strbut: find the first occurrence of any other character than c in str,
+ * or NULL if str contains only c.
+ */
+static char *
+strbut(const char *str, int c)
+{
+	while (*str == c) str++;
+	return *str ? (char *) str : NULL;
 }
 
 static void
@@ -111,7 +130,7 @@ nextline(void)
 		assert(r < linesz);
 		switch (line[r]) {
 		/* forbid problematic control characters */
-		case SYN_WS: case SYN_EQ: case SYN_COL:
+		case SYN_WS: case SYN_EQ: case SYN_COL: case SYN_SC:
 			die("file may not contain ASCII separator characters");
 			break;
 		/* handle backslash escape sequences */
@@ -122,7 +141,7 @@ nextline(void)
 				extendline(w);
 				r = w + 1;
 				break;
-			case ' ': case '\\': case ':': case '=':
+			case ' ': case '\\': case ':': case '=': case ';':
 				line[w++] = line[r++];
 				break;
 			default:
@@ -156,13 +175,16 @@ nextline(void)
 			line[w++] = SYN_COL;
 			r++;
 			break;
+		case ';':
+			line[w++] = SYN_SC;
+			r++;
+			break;
 		/* copy anything else verbatim */
 		case '\0':
 			line[w++] = '\0';
 			return 1;
 		default:
 			line[w++] = line[r++];
-			break;
 		}
 	}
 }
@@ -170,16 +192,54 @@ nextline(void)
 int
 main(int argc, const char *argv[])
 {
+	char *c, *dep;
+	size_t l;
+
+	cdeps = 16;
+	deps = calloc(cdeps, sizeof *deps);
+
 	if (argc != 2) die("usage: redo-depfile FILE");
-	if (!strcmp(argv[1], "--")) {
-		file = stdin;
-	} else {
+	file = stdin;
+	if (strcmp(argv[1], "--")) {
 		file = fopen(argv[1], "r");
 		if (!file) die("couldn't open file:");
 	}
 
 	while (nextline()) {
-		puts(line);
+		/* ignore recipe definitions */
+		if (line[0] == '\t') {
+			fprintf(stderr, "ignoring recipe definitions\n");
+			continue;
+		}
+		/* skip empty lines */
+		if (!strbut(line, SYN_WS)) {
+			continue;
+		}
+		/* skip macro definition lines */
+		if (strchr(line, SYN_EQ)) {
+			continue;
+		}
+		/* recognize rule definition lines */
+		if ((c = strchr(line, SYN_COL))) {
+			c++;
+			while ((c = strbut(c, SYN_WS))) {
+				if (*c == SYN_SC) {
+					fprintf(stderr, "ignoring recipe definitions\n");
+					break;
+				}
+				if (IS_CTRL(*c)) {
+					die("invalid rule definition syntax");
+				}
+				for (l = 0; !IS_CTRL(c[l]); l++) {}
+				dep = strndup(c, l);
+				if (!dep) die("malloc:");
+				putdep(dep);
+				c += l;
+			}
+			continue;
+		}
+		/* ignore any unrecognized lines */
+		fprintf(stderr, "ignoring unrecognized line\n");
 	}
 
 #if 1
@@ -188,13 +248,8 @@ main(int argc, const char *argv[])
 	free(part);
 #endif
 
-#if 0
-	cdeps = 16;
-	deps = calloc(cdeps, sizeof *deps);
-
 	putdep(NULL);
-	execvp("redo-ifchange", deps);
-	die("unable to execute redo-ifchange:");
-#endif
+	execvp(IFCHANGE_CMD, deps);
+	die("unable to execute " IFCHANGE_CMD ":");
 }
 
