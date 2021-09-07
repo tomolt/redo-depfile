@@ -178,12 +178,12 @@ main(int argc, const char *argv[])
 	char *c, *dep;
 	size_t l;
 
-	cdeps = 16;
+	cdeps = 32;
 	deps = calloc(cdeps, sizeof *deps);
 
 	if (argc != 2) die("usage: redo-depfile FILE");
 	file = stdin;
-	if (strcmp(argv[1], "--")) {
+	if (strcmp(argv[1], "-")) {
 		file = fopen(argv[1], "r");
 		if (!file) die("couldn't open file:");
 	}

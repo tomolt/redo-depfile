@@ -1,0 +1,56 @@
+.Dd September 7, 2021
+.Dt REDO-DEPFILE 1
+.Os
+.Sh NAME
+.Nm redo-depfile
+.Nd C/C++ header dependency tracking for redo
+.Sh SYNOPSIS
+.Nm
+.Ar FILE
+.Sh DESCRIPTION
+Automatic C/C++ header dependency tracking for the
+.Xr redo 1
+build-system.
+.sp
+Modern C/C++ compilers can generate partial Makefiles that specify the
+dependency relations between source files and the included header files.
+.Nm
+is a companion / extension to
+.Xr redo 1
+that can read such dependency-only Makefiles and feed them into redo.
+.sp
+It does this by calling
+.Ql redo-ifchange
+on all the declared dependencies it can find in a given dependency file.
+.sp
+Instead of a file name, a single dash (
+.Ql -
+) can be used to make
+.Nm
+read from
+.Dv stdin
+instead.
+.Sh EXAMPLES
+A typical
+.Pa default.o.do
+using
+.Nm
+might look like this:
+.Bd -literal
+CC=cc
+CFLAGS=-g
+redo-ifchange "$2.c"
+$CC $CFLAGS -c "$2.c" -o "$3" -MMD -MF "$2.d"
+redo-depfile "$2.d"
+.Ed
+.Sh COMPATIBILITY
+.Nm
+should be compatible with any redo variant, as long as it implements
+.Ql redo-ifchange
+as a separate executable (as opposed to a shell alias).
+.sp
+Altough
+.Nm
+only understands a subset of Makefile syntax, its parser is reasonably robust and can be extended to cover more syntax features as needed.
+.Sh AUTHORS
+.An Thomas Oltmann Aq Mt thomas.oltmann.hhg@gmail.com

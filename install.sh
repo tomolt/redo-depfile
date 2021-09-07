@@ -1,6 +1,10 @@
 #!/bin/sh
 test "$PREFIX" || PREFIX="/usr/local"
 BIN_DIR="$DESTDIR$PREFIX/bin"
+MAN_DIR="$DESTDIR$PREFIX/share/man"
 mkdir -p "$BIN_DIR"
 cp -f "redo-depfile" "$BIN_DIR/"
 chmod 755 "$BIN_DIR/redo-depfile"
+mkdir -p "$MAN_DIR"
+cp -f "redo-depfile.1" "$MAN_DIR/man1/"
+chmod 644 "$MAN_DIR/man1/redo-depfile.1"
