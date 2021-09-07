@@ -157,34 +157,17 @@ nextline(void)
 				die("macro substitutions are not supported");
 			}
 			break;
-		/* strip comments */
-		case '#':
-			line[w++] = '\0';
-			r++;
-			break;
 		/* remap syntactically relevant characters */
-		case ' ': case '\r': case '\n':
-			line[w++] = SYN_WS;
-			r++;
-			break;
-		case '=':
-			line[w++] = SYN_EQ;
-			r++;
-			break;
-		case ':':
-			line[w++] = SYN_COL;
-			r++;
-			break;
-		case ';':
-			line[w++] = SYN_SC;
-			r++;
-			break;
+		case '\r': case '\n':
+		case ' ':  line[w++] = SYN_WS;  r++; break;
+		case '=':  line[w++] = SYN_EQ;  r++; break;
+		case ':':  line[w++] = SYN_COL; r++; break;
+		case ';':  line[w++] = SYN_SC;  r++; break;
+		/* strip comments */
+		case '#':  line[w++] = '\0';    r++; break;
 		/* copy anything else verbatim */
-		case '\0':
-			line[w++] = '\0';
-			return 1;
-		default:
-			line[w++] = line[r++];
+		case '\0': line[w++] = '\0'; return 1;
+		default:   line[w++] = line[r++];
 		}
 	}
 }
