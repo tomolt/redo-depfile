@@ -182,6 +182,7 @@ main(int argc, const char *argv[])
 
 	cdeps = 32;
 	deps = calloc(cdeps, sizeof *deps);
+	putdep(IFCHANGE_CMD);
 
 	if (argc != 2) die("usage: redo-depfile FILE");
 	file = stdin;
